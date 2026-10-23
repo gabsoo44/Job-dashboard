@@ -23,6 +23,7 @@ from html import unescape
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from common import (ESCALATABLE, EVENT_STATUS, STATUSES, app_id, load_store, norm, save_store)
 
@@ -100,12 +101,18 @@ def fetch_messages(svc, since, processed):
             break
     todo = [mid for mid in ids if mid not in processed]
     print(f"{len(ids)} mails dans le libellé, {len(todo)} nouveaux à lire")
-    out = []
+    out, complete = [], True
     for n, mid in enumerate(todo, 1):
         # Gmail caps "query cost per minute per user": pace the reads, and let the client
         # retry rate-limit errors (403 rateLimitExceeded / 429) with exponential backoff
         time.sleep(GET_DELAY)
-        m = svc.users().messages().get(userId="me", id=mid, format="full").execute(num_retries=RETRIES)
+        try:
+            m = svc.users().messages().get(userId="me", id=mid, format="full").execute(num_retries=RETRIES)
+        except HttpError as e:
+            # keep what was read; the remaining mails are picked up by the next run
+            print(f"! Gmail a refusé après {n - 1}/{len(todo)} mails ({e.status_code}), reprise au prochain passage")
+            complete = False
+            break
         if n % 100 == 0:
             print(f"  {n}/{len(todo)} lus")
         h = {x["name"].lower(): x["value"] for x in m["payload"]["headers"]}
@@ -118,7 +125,7 @@ def fetch_messages(svc, since, processed):
         out.append({"id": mid, "from": h.get("from", ""), "subject": subject, "date": when,
                     "body": body_text(m["payload"])})
     # chronological order so a confirmation is applied before the rejection that follows it
-    return sorted(out, key=lambda m: m.get("date") or "")
+    return sorted(out, key=lambda m: m.get("date") or ""), complete
 
 
 def claude_exe():
@@ -233,6 +240,7 @@ def main():
         if args.backfill:
             apps.clear()
             state["processed_ids"] = []
+            state["last_sync"] = None
             since = None
         elif args.since_days:
             since = today - timedelta(days=args.since_days)
@@ -242,13 +250,14 @@ def main():
             since = None  # first ever run = full history
         processed = set(state["processed_ids"])
 
-        mails = fetch_messages(gmail_service(), since, processed)
+        mails, complete = fetch_messages(gmail_service(), since, processed)
         todo = [m for m in mails if not m.get("skip")]
         print(f"{len(mails)} mails du libellé '{LABEL}', {len(todo)} à classifier")
         results = classify(todo)
         changed = sum(apply_event(apps, m, results[m["id"]]) for m in todo if m["id"] in results)
         print(f"{changed} événements appliqués")
-        state["last_sync"] = today.isoformat()
+        if complete:  # otherwise keep the old window so unread mails are fetched next time
+            state["last_sync"] = today.isoformat()
         state["processed_ids"] = list(processed | {m["id"] for m in mails})[-5000:]
 
     for a in apps.values():
