@@ -5,7 +5,7 @@ on:
     - cron: "0 2 * * *"   # 02:00 UTC = 3h (hiver) / 4h (été) à Paris
   push:
     branches: [main]
-    paths: ["web/**"]
+    paths: ["web/**", ".github/workflows/**"]
   workflow_dispatch:
     inputs:
       backfill:
@@ -68,7 +68,8 @@ jobs:
 
   deploy:
     needs: [sync]
-    if: ${{ !cancelled() && !failure() }}
+    # deploy the site even if the sync failed (keeps the last good data online)
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
