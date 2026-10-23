@@ -29,7 +29,7 @@ from common import (ESCALATABLE, EVENT_STATUS, STATUSES, app_id, load_store, nor
 
 LABEL = os.environ.get("GMAIL_LABEL", "Candidatures")
 MODEL = "haiku"  # Claude Code model alias: light on the subscription quota
-BATCH = 8
+BATCH = 20  # mails per Claude call: fewer calls = faster backfill, lighter on the quota
 BODY_CHARS = 2500
 GET_DELAY = 0.25  # seconds between Gmail reads
 RETRIES = 8
@@ -164,6 +164,7 @@ def classify(mails):
         prompt = json.dumps(
             [{k: m[k] for k in ("id", "from", "subject", "date", "body")} for m in chunk], ensure_ascii=False)
         text = ask_claude(prompt, workdir)
+        print(f"  classés {min(i + BATCH, len(mails))}/{len(mails)}")
         try:
             for r in json.loads(text[text.index("["):text.rindex("]") + 1]):
                 results[r["id"]] = r

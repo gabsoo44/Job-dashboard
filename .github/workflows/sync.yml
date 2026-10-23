@@ -56,6 +56,7 @@ jobs:
           SET_ID: ${{ inputs.set_id }}
           SET_STATUS: ${{ inputs.set_status }}
           SET_NOTE: ${{ inputs.set_note }}
+          PYTHONUNBUFFERED: "1"   # show progress live in the Actions log
         run: |
           if [ -n "$SET_ID" ]; then
             python scripts/sync.py --set "$SET_ID" "$SET_STATUS" $SET_NOTE
@@ -69,7 +70,11 @@ jobs:
           git config user.name "sync-bot"
           git config user.email "sync-bot@users.noreply.github.com"
           git add web/data
-          git diff --staged --quiet || (git commit -m "chore: sync $(date -u +%F)" && git push)
+          git diff --staged --quiet && exit 0
+          git commit -m "chore: sync $(date -u +%F)"
+          # main may have moved during a long sync: replay the data commit on top of it
+          for i in 1 2 3; do git pull --rebase -X theirs origin main && git push && exit 0; sleep 5; done
+          exit 1
 
   deploy:
     needs: [sync]
