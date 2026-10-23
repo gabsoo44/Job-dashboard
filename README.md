@@ -3,11 +3,11 @@
 Dashboard de suivi de candidatures qui se met à jour **chaque nuit tout seul**, même PC éteint :
 
 1. Une GitHub Action lit le libellé Gmail **« Candidatures »** (lecture seule).
-2. Claude (Haiku) classe chaque mail : accusé de réception, CV consulté, entretien, refus, etc.
+2. Claude Code (modèle Haiku, via ton abonnement Claude) classe chaque mail : accusé de réception, CV consulté, entretien, refus, etc.
 3. Les candidatures et leur statut sont mis à jour dans un fichier **chiffré** (AES-256-GCM).
 4. Le site est redéployé sur GitHub Pages ; il demande ton mot de passe et déchiffre les données **dans ton navigateur**.
 
-Coût : ~0 € (GitHub gratuit, Haiku ≈ quelques centimes par mois).
+Coût : 0 € en plus de ton abonnement Claude (Pro ou Max) — pas de clé API. La synchro consomme un peu de ton quota ; si le quota est épuisé une nuit, elle rattrape la nuit suivante.
 
 > **Pourquoi le repo est public** : GitHub Pages gratuit exige un repo public. Ce n'est pas un problème : le code est public, mais les données ne sont jamais en clair dans le repo (seulement `web/data/store.enc.json`, illisible sans ton mot de passe). **Choisis un mot de passe long** (une phrase de 4-5 mots) : c'est lui qui protège tes données.
 
@@ -33,7 +33,12 @@ gh repo create job-dashboard --public --source=. --push
 
 ### 3. Secrets GitHub
 Repo → *Settings → Secrets and variables → Actions* :
-`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `ANTHROPIC_API_KEY` (console.anthropic.com), `DASHBOARD_PASSWORD` (ton mot de passe du dashboard).
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `DASHBOARD_PASSWORD` (ton mot de passe du dashboard) et `CLAUDE_CODE_OAUTH_TOKEN` :
+```bash
+npm install -g @anthropic-ai/claude-code
+claude setup-token
+```
+Connecte-toi avec ton compte Claude ; la commande affiche un jeton longue durée (`sk-ant-oat…`) à coller dans le secret.
 
 ### 4. GitHub Pages
 Repo → *Settings → Pages → Source : **GitHub Actions***.

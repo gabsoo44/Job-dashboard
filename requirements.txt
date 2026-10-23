@@ -1,5 +1,4 @@
 google-api-python-client>=2.140
 google-auth>=2.30
 google-auth-oauthlib>=1.2
-anthropic>=0.50
 cryptography>=43

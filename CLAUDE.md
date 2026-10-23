@@ -5,7 +5,7 @@ Dashboard des candidatures d'un développeur junior (France). Une GitHub Action 
 site statique `web/` sur GitHub Pages. Plus aucun Excel : le libellé Gmail est l'unique source.
 
 ## Architecture
-- `scripts/sync.py` — Gmail (libellé) → classification Claude (`claude-haiku-5-5`) → fusion → escalade par dates → overrides → store chiffré.
+- `scripts/sync.py` — Gmail (libellé) → classification par Claude Code headless (`claude -p --model haiku --tools ""`, authentifié par `CLAUDE_CODE_OAUTH_TOKEN` = abonnement, pas d'API) → fusion → escalade par dates → overrides → store chiffré.
   Modes : incrémental (défaut), `--backfill` (tout reconstruire), `--set ID STATUT [NOTE]` (correction manuelle), `--dry-run`.
 - `scripts/common.py` — chemins, statuts, normalisation (`norm`, `app_id`), chiffrement (`load_store`/`save_store`).
 - `scripts/gmail_auth.py` — obtient le refresh token Gmail (une fois, en local).

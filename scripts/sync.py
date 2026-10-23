@@ -1,6 +1,7 @@
 """Sync: read the Gmail label 'Candidatures', classify mails with Claude, update the encrypted store.
 
-Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, ANTHROPIC_API_KEY, DASHBOARD_PASSWORD
+Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, DASHBOARD_PASSWORD,
+     CLAUDE_CODE_OAUTH_TOKEN (Claude subscription token from `claude setup-token`; the `claude` CLI must be installed)
 Usage:
   py scripts/sync.py                     incremental (mails since last sync)
   py scripts/sync.py --backfill          rebuild from every mail of the label
@@ -12,18 +13,20 @@ import base64
 import json
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from html import unescape
 
-import anthropic
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 from common import (ESCALATABLE, EVENT_STATUS, STATUSES, app_id, load_store, norm, save_store)
 
 LABEL = os.environ.get("GMAIL_LABEL", "Candidatures")
-MODEL = "claude-haiku-5-5"
+MODEL = "haiku"  # Claude Code model alias: light on the subscription quota
 BATCH = 8
 BODY_CHARS = 2500
 
@@ -109,15 +112,42 @@ def fetch_messages(svc, since, processed):
     return sorted(out, key=lambda m: m.get("date") or "")
 
 
-def classify(client, mails):
+def claude_exe():
+    """Path of the real Claude Code binary. On Windows npm only exposes a claude.cmd shim,
+    which would mangle the multi-line system prompt, so resolve the .exe behind it."""
+    if os.environ.get("CLAUDE_BIN"):
+        return os.environ["CLAUDE_BIN"]
+    if os.name != "nt" and shutil.which("claude"):
+        return shutil.which("claude")
+    shim = shutil.which("claude.cmd")
+    if shim:
+        exe = os.path.join(os.path.dirname(shim), "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe")
+        if os.path.exists(exe):
+            return exe
+    raise SystemExit("CLI 'claude' introuvable (npm i -g @anthropic-ai/claude-code)")
+
+
+def ask_claude(prompt, workdir):
+    """One headless Claude Code call with every tool disabled (mail content is untrusted)."""
+    exe = claude_exe()
+    proc = subprocess.run(
+        [exe, "-p", "--model", MODEL, "--system-prompt", SYSTEM, "--tools", "",
+         "--strict-mcp-config", "--no-session-persistence", "--output-format", "json"],
+        input=prompt, capture_output=True, text=True, encoding="utf-8", cwd=workdir, timeout=300)
+    out = json.loads(proc.stdout or "{}")
+    if proc.returncode or out.get("is_error"):
+        raise RuntimeError(f"claude a échoué ({proc.returncode}): {out.get('result') or proc.stderr[-500:]}")
+    return out["result"]
+
+
+def classify(mails):
     results = {}
+    workdir = tempfile.mkdtemp()  # empty cwd: nothing for Claude to see
     for i in range(0, len(mails), BATCH):
         chunk = mails[i:i + BATCH]
         prompt = json.dumps(
             [{k: m[k] for k in ("id", "from", "subject", "date", "body")} for m in chunk], ensure_ascii=False)
-        msg = client.messages.create(model=MODEL, max_tokens=2000, system=SYSTEM,
-                                     messages=[{"role": "user", "content": prompt}])
-        text = msg.content[0].text
+        text = ask_claude(prompt, workdir)
         try:
             for r in json.loads(text[text.index("["):text.rindex("]") + 1]):
                 results[r["id"]] = r
@@ -206,7 +236,7 @@ def main():
         mails = fetch_messages(gmail_service(), since, processed)
         todo = [m for m in mails if not m.get("skip")]
         print(f"{len(mails)} mails du libellé '{LABEL}', {len(todo)} à classifier")
-        results = classify(anthropic.Anthropic(), todo)
+        results = classify(todo)
         changed = sum(apply_event(apps, m, results[m["id"]]) for m in todo if m["id"] in results)
         print(f"{changed} événements appliqués")
         state["last_sync"] = today.isoformat()
