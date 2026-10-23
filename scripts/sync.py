@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from html import unescape
@@ -29,6 +30,8 @@ LABEL = os.environ.get("GMAIL_LABEL", "Candidatures")
 MODEL = "haiku"  # Claude Code model alias: light on the subscription quota
 BATCH = 8
 BODY_CHARS = 2500
+GET_DELAY = 0.25  # seconds between Gmail reads
+RETRIES = 8
 
 NOISE = re.compile(r"alerte|job alert|nouvelles offres|offres? pour vous|newsletter", re.I)
 
@@ -86,19 +89,25 @@ def body_text(payload):
 def fetch_messages(svc, since, processed):
     """Every unprocessed mail of the label (since=None -> whole history), oldest first."""
     query = "-in:sent -in:drafts" + (f" after:{since:%Y/%m/%d}" if since else "")
+    lid = label_id(svc)
     ids, token = [], None
     while True:
-        resp = svc.users().messages().list(userId="me", labelIds=[label_id(svc)], q=query,
-                                           pageToken=token, maxResults=500).execute()
+        resp = svc.users().messages().list(userId="me", labelIds=[lid], q=query,
+                                           pageToken=token, maxResults=500).execute(num_retries=RETRIES)
         ids += [m["id"] for m in resp.get("messages", [])]
         token = resp.get("nextPageToken")
         if not token:
             break
+    todo = [mid for mid in ids if mid not in processed]
+    print(f"{len(ids)} mails dans le libellé, {len(todo)} nouveaux à lire")
     out = []
-    for mid in ids:
-        if mid in processed:
-            continue
-        m = svc.users().messages().get(userId="me", id=mid, format="full").execute()
+    for n, mid in enumerate(todo, 1):
+        # Gmail caps "query cost per minute per user": pace the reads, and let the client
+        # retry rate-limit errors (403 rateLimitExceeded / 429) with exponential backoff
+        time.sleep(GET_DELAY)
+        m = svc.users().messages().get(userId="me", id=mid, format="full").execute(num_retries=RETRIES)
+        if n % 100 == 0:
+            print(f"  {n}/{len(todo)} lus")
         h = {x["name"].lower(): x["value"] for x in m["payload"]["headers"]}
         subject = h.get("subject", "")
         if NOISE.search(subject):
