@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confidentialité — Job Dashboard</title>
+<style>
+  :root { --bg:#f7f7f5; --text:#1c1c1a; --muted:#6b6b66; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161614; --text:#ecebe6; --muted:#9a9a93; } }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:1.5rem; } h2 { font-size:1.1rem; margin-top:28px; }
+  .muted { color:var(--muted); font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Politique de confidentialité — Job Dashboard</h1>
+  <p class="muted">Dernière mise à jour : 23 octobre 2026</p>
+
+  <p>Job Dashboard est un outil personnel, non commercial, utilisé par son seul auteur pour suivre ses propres candidatures.</p>
+
+  <h2>Données consultées</h2>
+  <p>L'application accède en <strong>lecture seule</strong> (scope <code>gmail.readonly</code>) aux e-mails portant le libellé « Candidatures » de la boîte Gmail de son auteur. Elle ne peut ni envoyer, ni modifier, ni supprimer d'e-mail.</p>
+
+  <h2>Utilisation</h2>
+  <p>Un extrait de chaque e-mail (2 500 caractères maximum) est analysé par l'API Anthropic (Claude) pour en déduire l'entreprise, le poste et l'état de la candidature. Aucune donnée n'est vendue, partagée à des tiers à des fins publicitaires, ni utilisée pour autre chose que ce suivi.</p>
+
+  <h2>Stockage</h2>
+  <p>Le résultat est stocké uniquement sous forme chiffrée (AES-256-GCM) dans le dépôt GitHub du projet, et n'est déchiffré que dans le navigateur de son auteur à l'aide d'un mot de passe. Les identifiants d'accès Google sont conservés dans les secrets chiffrés de GitHub Actions.</p>
+
+  <h2>Révocation</h2>
+  <p>L'accès peut être retiré à tout moment depuis <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+  <h2>Contact</h2>
+  <p>Via le dépôt du projet : <a href="https://github.com/gabsoo44/Job-dashboard">github.com/gabsoo44/Job-dashboard</a>.</p>
+</main>
+</body>
+</html>
