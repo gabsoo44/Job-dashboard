@@ -1,0 +1,84 @@
+name: Sync et déploiement
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC = 3h (hiver) / 4h (été) à Paris
+  push:
+    branches: [main]
+    paths: ["web/**"]
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Reconstruire tout depuis le libellé Gmail"
+        type: boolean
+        default: false
+      set_id:
+        description: "Correction manuelle : id de la candidature"
+        required: false
+      set_status:
+        description: "Correction manuelle : nouveau statut (ex. Entretien)"
+        required: false
+      set_note:
+        description: "Correction manuelle : note (optionnel)"
+        required: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency: sync
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Synchroniser
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          BACKFILL: ${{ inputs.backfill }}
+          SET_ID: ${{ inputs.set_id }}
+          SET_STATUS: ${{ inputs.set_status }}
+          SET_NOTE: ${{ inputs.set_note }}
+        run: |
+          if [ -n "$SET_ID" ]; then
+            python scripts/sync.py --set "$SET_ID" "$SET_STATUS" $SET_NOTE
+          elif [ "$BACKFILL" = "true" ]; then
+            python scripts/sync.py --backfill
+          else
+            python scripts/sync.py
+          fi
+      - name: Commit des données chiffrées
+        run: |
+          git config user.name "sync-bot"
+          git config user.email "sync-bot@users.noreply.github.com"
+          git add web/data
+          git diff --staged --quiet || (git commit -m "chore: sync $(date -u +%F)" && git push)
+
+  deploy:
+    needs: [sync]
+    if: ${{ !cancelled() && !failure() }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main   # reprend le commit de synchro
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4
