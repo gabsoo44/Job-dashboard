@@ -46,8 +46,18 @@ Repo → *Settings → Pages → Source : **GitHub Actions***.
 ### 5. Premier lancement
 *Actions → Sync et déploiement → Run workflow* avec **backfill** coché : reconstruit toute la liste depuis tout le libellé. Le lien du site apparaît dans le job *deploy*. Ensuite, tout tourne seul vers 3h du matin (heure de Paris).
 
-## Corriger un statut à la main
-*Actions → Run workflow* → renseigne `set_id` (l'id de la candidature), `set_status` (ex. `Entretien`) et éventuellement `set_note`. Ces corrections sont conservées et ne sont jamais écrasées par la synchro. *(Une édition directe depuis le site est dans la roadmap.)*
+## Ajouter ou modifier une candidature depuis le site
+1. GitHub → avatar → *Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token*.
+   Repository access : **Only select repositories → Job-dashboard**. Permissions : **Contents → Read and write**. Expiration au choix.
+2. Sur le dashboard : **Connexion GitHub** → colle le jeton (il reste dans ce navigateur uniquement).
+3. **+ Ajouter** ou **Modifier** sur une ligne. Les changements sont chiffrés avec ton mot de passe dans
+   `web/data/manual.enc.json`, que la synchro de nuit ne touche jamais. Un nouveau mail (refus, entretien…)
+   plus récent que ta modification reprend la main sur le statut.
+
+Autre option sans jeton : *Actions → Run workflow* → `set_id`, `set_status`, `set_note`.
+
+## Recalculer sans relire Gmail
+Les classifications de Claude sont stockées (chiffrées). Après une amélioration des règles : *Run workflow* avec **rebuild** coché (quelques secondes, sans Gmail ni Claude).
 
 ## Tester en local
 ```bash
