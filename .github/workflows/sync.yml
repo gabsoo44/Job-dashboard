@@ -12,6 +12,10 @@ on:
         description: "Reconstruire tout depuis le libellé Gmail"
         type: boolean
         default: false
+      rebuild:
+        description: "Recalculer depuis les classifications déjà stockées (sans Gmail ni Claude)"
+        type: boolean
+        default: false
       set_id:
         description: "Correction manuelle : id de la candidature"
         required: false
@@ -53,6 +57,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
           BACKFILL: ${{ inputs.backfill }}
+          REBUILD: ${{ inputs.rebuild }}
           SET_ID: ${{ inputs.set_id }}
           SET_STATUS: ${{ inputs.set_status }}
           SET_NOTE: ${{ inputs.set_note }}
@@ -62,6 +67,8 @@ jobs:
             python scripts/sync.py --set "$SET_ID" "$SET_STATUS" $SET_NOTE
           elif [ "$BACKFILL" = "true" ]; then
             python scripts/sync.py --backfill
+          elif [ "$REBUILD" = "true" ]; then
+            python scripts/sync.py --rebuild
           else
             python scripts/sync.py
           fi

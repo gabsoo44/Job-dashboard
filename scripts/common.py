@@ -79,5 +79,14 @@ def norm(text):
     return re.sub(r"[^a-z0-9]+", " ", t).strip()
 
 
+COMPANY_NOISE = {"group", "groupe", "sa", "sas", "sasu", "sarl", "france", "inc", "ltd", "gmbh", "the"}
+
+
+def norm_company(name):
+    """'Thales Group' and 'THALES' -> 'thales'."""
+    words = [w for w in norm(name).split() if w not in COMPANY_NOISE]
+    return " ".join(words) or norm(name)
+
+
 def app_id(company, title):
-    return f"{norm(company)}|{norm(title)}".replace(" ", "-")
+    return f"{norm_company(company)}|{norm(title)}".replace(" ", "-")
