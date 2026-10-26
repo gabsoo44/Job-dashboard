@@ -48,7 +48,7 @@ Repo → *Settings → Pages → Source : **GitHub Actions***.
 
 ## Ajouter ou modifier une candidature depuis le site
 1. GitHub → avatar → *Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token*.
-   Repository access : **Only select repositories → Job-dashboard**. Permissions : **Contents → Read and write**. Expiration au choix.
+   Repository access : **Only select repositories → Job-dashboard**. Permissions : **Contents → Read and write** et **Actions → Read and write** (pour le bouton « ↻ Mettre à jour »). Expiration au choix.
 2. Sur le dashboard : **Connexion GitHub** → colle le jeton (il reste dans ce navigateur uniquement).
 3. **+ Ajouter** ou **Modifier** sur une ligne. Les changements sont chiffrés avec ton mot de passe dans
    `web/data/manual.enc.json`, que la synchro de nuit ne touche jamais. Un nouveau mail (refus, entretien…)

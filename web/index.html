@@ -113,6 +113,9 @@
   label { display:flex; flex-direction:column; gap:4px; font-size:.8rem; font-weight:600; color:var(--muted); }
   .dlg-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
   .hint { font-size:.82rem; color:var(--muted); margin:0; }
+  .btn:disabled { opacity:.75; cursor:progress; }
+  .spin { display:inline-block; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#14172b; color:#fff;
            padding:10px 16px; border-radius:10px; font-size:.88rem; box-shadow:var(--shadow); }
 
@@ -133,6 +136,7 @@
       <p id="sub">Suivi automatique depuis Gmail</p>
     </div>
     <div class="actions" id="topActions" hidden>
+      <button class="btn ghost" id="btnSync" title="Lire les nouveaux mails maintenant">↻ Mettre à jour</button>
       <button class="btn ghost" id="btnAdd">+ Ajouter</button>
       <button class="btn ghost" id="btnSettings">Connexion GitHub</button>
       <button class="btn ghost" id="btnLock">Verrouiller</button>
@@ -183,8 +187,9 @@
 <dialog id="dlgSettings">
   <form class="dlg" id="formSettings" method="dialog">
     <h2>Connexion GitHub</h2>
-    <p class="hint">Pour enregistrer tes ajouts et modifications, la page a besoin d'un jeton GitHub « fine-grained »
-      limité au repo <b>Job-dashboard</b>, avec la permission <b>Contents : Read and write</b>. Il reste uniquement dans ce navigateur.</p>
+    <p class="hint">Pour enregistrer tes ajouts et lancer une mise à jour depuis cette page, elle a besoin d'un jeton GitHub
+      « fine-grained » limité au repo <b>Job-dashboard</b>, avec les permissions <b>Contents : Read and write</b> et
+      <b>Actions : Read and write</b>. Il reste uniquement dans ce navigateur.</p>
     <label>Jeton GitHub<input name="token" type="password" placeholder="github_pat_…" autocomplete="off"></label>
     <div class="dlg-actions">
       <button class="btn danger" type="button" id="btnForget">Oublier le jeton</button>
@@ -262,10 +267,11 @@ async function encrypt(data, pw) {
   return { v: 1, iter, salt: b64e(salt), iv: b64e(iv), ct: b64e(ct) };
 }
 
-// ---- GitHub contents API (only used to save manual edits)
-const gh = (path, opts = {}) => fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
+// ---- GitHub API (saving manual edits, triggering a sync)
+const api = (path, opts = {}) => fetch(`https://api.github.com/repos/${REPO}/${path}`, {
   ...opts, headers: { Authorization: `Bearer ${store.get("ghToken")}`, Accept: "application/vnd.github+json", ...(opts.headers || {}) },
 });
+const gh = (path, opts = {}) => api(`contents/${path}`, opts);
 
 async function loadManual() {
   // fresh copy through the API when a token is set (Pages may lag ~1 min after a save)
@@ -296,6 +302,59 @@ async function saveManual() {
   }
   if (!r.ok) throw new Error(`Enregistrement refusé par GitHub (${r.status}).`);
   manualSha = (await r.json()).content.sha;
+}
+
+// ---- "Mettre à jour": run the sync workflow now, wait for it, reload the data
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function syncNow() {
+  if (!store.get("ghToken")) {
+    $("dlgSettings").showModal();
+    return toast("Ajoute un jeton GitHub (permission Actions) pour lancer une mise à jour.");
+  }
+  const btn = $("btnSync");
+  const label = txt => btn.replaceChildren(el("span", { className: "spin", textContent: "↻" }), ` ${txt}`);
+  btn.disabled = true;
+  label("Démarrage…");
+  try {
+    const started = Date.now() - 10000;
+    const r = await api("actions/workflows/sync.yml/dispatches", { method: "POST", body: JSON.stringify({ ref: "main" }) });
+    if (r.status === 403 || r.status === 404) throw new Error("Le jeton doit avoir la permission « Actions : Read and write ».");
+    if (!r.ok) throw new Error(`GitHub a refusé la mise à jour (${r.status}).`);
+
+    // find the run we just started, then wait for its "sync" job (about 1-2 min)
+    let run = null;
+    for (let i = 0; i < 90; i++) {
+      await sleep(i ? 5000 : 3000);
+      if (!run) {
+        const runs = await api("actions/runs?event=workflow_dispatch&per_page=5").then(x => x.json());
+        run = (runs.workflow_runs || []).find(w => new Date(w.created_at) >= started);
+        label("En attente de GitHub…");
+        continue;
+      }
+      const jobs = await api(`actions/runs/${run.id}/jobs`).then(x => x.json());
+      const job = (jobs.jobs || []).find(j => j.name === "sync");
+      if (!job || job.status !== "completed") { label("Lecture des mails…"); continue; }
+      if (job.conclusion !== "success") throw new Error("La synchro a échoué — détails dans l'onglet Actions de GitHub.");
+      break;
+    }
+    if (!run) throw new Error("GitHub n'a pas démarré la synchro, réessaie dans un instant.");
+
+    // fresh data straight from the repo (GitHub Pages redeploys a minute later)
+    label("Chargement…");
+    const raw = await gh("web/data/store.enc.json?ref=main", { headers: { Accept: "application/vnd.github.raw+json" } });
+    if (!raw.ok) throw new Error(`Impossible de relire les données (${raw.status}).`);
+    const data = await decrypt(await raw.json(), password);
+    const before = autoApps.length;
+    autoApps = data.applications; generatedAt = data.generated_at;
+    merge(); render();
+    const added = autoApps.length - before;
+    toast(added > 0 ? `À jour ✓ — ${added} nouvelle${added > 1 ? "s" : ""} candidature${added > 1 ? "s" : ""}` : "À jour ✓");
+  } catch (ex) {
+    toast(ex.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "↻ Mettre à jour";
+  }
 }
 
 // ---- merge: automatic data + manual additions/edits
@@ -489,6 +548,7 @@ $("btnDelete").onclick = async () => {
 // ---- settings / lock
 $("selStatus").append(...STATUS_ORDER.map(s => el("option", { value: s, textContent: s })));
 $("btnAdd").onclick = () => openEdit(null);
+$("btnSync").onclick = syncNow;
 $("btnCancel").onclick = () => $("dlgEdit").close();
 $("btnSettings").onclick = () => { $("formSettings").elements.token.value = store.get("ghToken") || ""; $("dlgSettings").showModal(); };
 $("btnCloseSettings").onclick = () => $("dlgSettings").close();
