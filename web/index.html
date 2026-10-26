@@ -12,8 +12,8 @@
     --bg:#f6f8ff; --card:#ffffff; --text:#14172b; --muted:#6a7090; --line:#e6e9f5;
     --accent:#5b5bf7; --accent-2:#22b8cf; --accent-soft:#eef0ff;
     --shadow:0 1px 2px rgba(20,23,43,.04), 0 8px 24px rgba(91,91,247,.07);
-    --s-Offre:#0f9d58; --s-Entretien:#16a34a; --s-En-cours:#2f6bff; --s-À-relancer:#f97316;
-    --s-Relancée:#eab308; --s-Envoyée:#7c86a8; --s-Sans-réponse:#a3a9c2; --s-Refus:#ef4444; --s-Incomplète:#a16207;
+    --s-Réponse-positive:#10b981; --s-Envoyée:#8b5cf6; --s-En-cours:#2f6bff;
+    --s-Sans-réponse:#94a3b8; --s-Refus:#ef4444; --s-Incomplète:#f59e0b;
   }
   * { box-sizing:border-box; }
   [hidden] { display:none !important; }
@@ -51,7 +51,7 @@
   .kpi .v { font-size:1.9rem; font-weight:800; letter-spacing:-.02em; }
   .kpi .l { color:var(--muted); font-size:.82rem; font-weight:500; }
   .kpi .v.c1 { color:var(--accent); } .kpi .v.c2 { color:var(--s-En-cours); }
-  .kpi .v.c3 { color:var(--s-Entretien); } .kpi .v.c4 { color:var(--s-Refus); }
+  .kpi .v.c3 { color:var(--s-Réponse-positive); } .kpi .v.c4 { color:var(--accent-2); }
 
   /* filters */
   .bar { display:flex; flex-direction:column; gap:12px; margin:22px 0 14px; }
@@ -64,21 +64,35 @@
   .chip[aria-pressed="true"] b { color:#fff; }
   .search { max-width:420px; }
 
-  /* list */
-  .year-h { margin:26px 0 10px; font-size:1rem; font-weight:800; color:var(--muted); letter-spacing:.02em; }
-  .list { display:flex; flex-direction:column; gap:8px; }
-  .item { background:var(--card); border-radius:14px; box-shadow:var(--shadow); border-left:4px solid var(--c); }
-  .item summary { display:grid; grid-template-columns:2fr 2.4fr 1fr 110px 130px; gap:12px; align-items:center;
-                  padding:14px 16px; cursor:pointer; list-style:none; }
-  .item summary::-webkit-details-marker { display:none; }
-  .co { font-weight:700; }
+  /* boards: one container per status */
+  .highlight { border-radius:16px; padding:14px 16px 16px; margin-bottom:14px;
+               background:color-mix(in srgb, var(--c) 9%, white); border:1px solid color-mix(in srgb, var(--c) 30%, white); }
+  .highlight h3 { margin:0 0 10px; font-size:.95rem; font-weight:800; color:var(--c); }
+  .highlight .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px; padding:0; overflow:visible; }
+  .boards { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; align-items:start; }
+  .board { background:color-mix(in srgb, var(--c) 6%, white); border-radius:16px; border-top:4px solid var(--c);
+           box-shadow:var(--shadow); display:flex; flex-direction:column; max-height:72vh; }
+  .board-h { padding:14px 14px 10px; }
+  .board-h .t { display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; }
+  .board-h .n { color:#fff; background:var(--c); border-radius:999px; font-size:.78rem; padding:2px 9px; }
+  .board-h .r { color:var(--muted); font-size:.76rem; margin-top:2px; }
+  .cards { display:flex; flex-direction:column; gap:8px; padding:0 10px 12px; overflow-y:auto; }
+  .card { background:var(--card); border-radius:12px; box-shadow:0 1px 2px rgba(20,23,43,.06); border:1px solid var(--line);
+          transition:transform .15s ease, box-shadow .15s ease; }
+  .card:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(20,23,43,.08); }
+  .card summary { padding:10px 12px; cursor:pointer; list-style:none; }
+  .card summary::-webkit-details-marker { display:none; }
+  .card .co { font-weight:700; font-size:.92rem; }
+  .card .ti { font-size:.86rem; margin-top:1px; }
+  .card .meta { color:var(--muted); font-size:.76rem; margin-top:4px; }
   .muted { color:var(--muted); font-size:.85rem; }
-  .badge { justify-self:start; padding:4px 10px; border-radius:999px; font-size:.78rem; font-weight:700;
-           color:var(--c); background:color-mix(in srgb, var(--c) 13%, white); }
-  .tag { font-size:.7rem; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
-  .detail { padding:0 16px 14px; display:flex; gap:16px; justify-content:space-between; flex-wrap:wrap; }
-  .detail ul { margin:0; padding-left:18px; font-size:.84rem; color:var(--muted); }
-  .detail a { color:var(--accent); }
+  .tag { font-size:.68rem; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:6px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+  .detail { margin:0 12px; padding:10px 0 12px; display:flex; flex-direction:column; gap:8px; border-top:1px dashed var(--line); }
+  .detail ul { margin:0; padding-left:16px; font-size:.78rem; color:var(--muted); }
+  .detail p { margin:0; }
+  .detail a { color:var(--accent); font-size:.84rem; }
+  .detail .btn { align-self:flex-start; padding:6px 12px; font-size:.82rem; }
+  .board .empty-b { color:var(--muted); font-size:.82rem; text-align:center; padding:18px 8px; }
   .empty { padding:40px; text-align:center; color:var(--muted); background:var(--card); border-radius:14px; }
 
   /* dialog */
@@ -93,10 +107,11 @@
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#14172b; color:#fff;
            padding:10px 16px; border-radius:10px; font-size:.88rem; box-shadow:var(--shadow); }
 
-  @media (max-width:760px) {
+  @media (max-width:1100px) { .boards { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+  @media (max-width:700px) {
     .kpis { grid-template-columns:repeat(2, 1fr); }
-    .item summary { grid-template-columns:1fr auto; }
-    .hide-m { display:none; }
+    .boards { grid-template-columns:1fr; }
+    .board { max-height:none; }
     .grid2 { grid-template-columns:1fr; }
   }
 </style>
@@ -128,7 +143,6 @@
     <section class="kpis" id="kpis"></section>
     <section class="bar">
       <div class="row-chips" id="years"></div>
-      <div class="row-chips" id="stats"></div>
       <input type="search" class="search" id="q" placeholder="Rechercher une entreprise, un poste, une plateforme…">
     </section>
     <section id="table"></section>
@@ -175,8 +189,14 @@
 <div class="toast" id="toast" hidden></div>
 
 <script>
-const STATUS_ORDER = ["Offre","Entretien","En cours","À relancer","Relancée","Envoyée","Sans réponse","Refus","Incomplète"];
-const ACTIVE = new Set(["Offre","Entretien","En cours","À relancer","Relancée","Envoyée"]);
+const STATUS_ORDER = ["Réponse positive", "Envoyée", "En cours", "Sans réponse", "Refus", "Incomplète"];
+const BOARDS = [
+  ["Envoyée", "Moins de 3 jours"],
+  ["En cours", "Entre 3 jours et 2 mois"],
+  ["Sans réponse", "Plus de 2 mois sans nouvelles"],
+  ["Refus", "Réponse négative reçue"],
+];
+const LEGACY = { "Entretien": "Réponse positive", "Offre": "Réponse positive", "À relancer": "En cours", "Relancée": "En cours" };
 const color = s => `var(--s-${(s || "Envoyée").replace(/ /g, "-")})`;
 const fmt = d => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 const today = () => new Date().toISOString().slice(0, 10);
@@ -190,7 +210,7 @@ const REPO = (() => {
 const MANUAL_PATH = "web/data/manual.enc.json";
 
 let password = null, autoApps = [], manual = { added: {}, edits: {} }, manualSha = null, generatedAt = null;
-let apps = [], filter = null, yearFilter = null, query = "";
+let apps = [], yearFilter = null, query = "";
 
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => {
@@ -267,19 +287,22 @@ async function saveManual() {
 }
 
 // ---- merge: automatic data + manual additions/edits
+// same rule as scripts/sync.py: Envoyée < 3 days, En cours < 2 months after the last activity, then Sans réponse
 function escalate(a) {
-  if (!["Envoyée", "À relancer"].includes(a.status) || !a.applied_on) return a;
-  const days = (Date.now() - new Date(a.applied_on)) / 864e5;
-  return { ...a, status: days >= 21 ? "Sans réponse" : days >= 7 ? "À relancer" : a.status };
+  const status = LEGACY[a.status] || a.status;
+  const last = [a.applied_on, a.last_event_on].filter(Boolean).sort().pop();
+  if (!["Envoyée", "En cours"].includes(status) || !last) return { ...a, status };
+  const days = (Date.now() - new Date(last)) / 864e5;
+  return { ...a, status: days >= 60 ? "Sans réponse" : days >= 3 ? "En cours" : status };
 }
 function merge() {
   const out = autoApps.map(a => {
     const e = manual.edits[a.id];
-    if (!e) return a;
+    if (!e) return escalate(a);
     const m = { ...a, ...e, manualEdit: true };
     // a newer mail (refusal, interview…) wins over an older manual status
     if (a.last_event_on && e.updated_on && a.last_event_on > e.updated_on) m.status = a.status;
-    return m;
+    return escalate(m);
   });
   Object.values(manual.added).forEach(a => out.push(escalate({ ...a, manual: true })));
   apps = out;
@@ -307,13 +330,15 @@ async function unlock(pw) {
 function render() {
   $("sub").textContent = `${apps.length} candidatures · synchro ${generatedAt ? new Date(generatedAt).toLocaleString("fr-FR") : "—"}`;
   const inYear = apps.filter(a => !yearFilter || year(a) === yearFilter);
+  const n = s => inYear.filter(a => a.status === s).length;
 
   // KPIs follow the year filter
+  const answered = n("Réponse positive") + n("Refus");
   const k = [
     ["Candidatures", inYear.length, "c1"],
-    ["Actives", inYear.filter(a => ACTIVE.has(a.status)).length, "c2"],
-    ["Entretiens / offres", inYear.filter(a => ["Entretien", "Offre"].includes(a.status)).length, "c3"],
-    ["Refus", inYear.filter(a => a.status === "Refus").length, "c4"],
+    ["En attente de réponse", n("Envoyée") + n("En cours"), "c2"],
+    ["Réponses positives", n("Réponse positive"), "c3"],
+    ["Taux de réponse", inYear.length ? `${Math.round(100 * answered / inYear.length)} %` : "—", "c4"],
   ];
   $("kpis").replaceChildren(...k.map(([l, v, c]) => el("div", { className: "kpi" }, el("div", { className: `v ${c}`, textContent: v }), el("div", { className: "l", textContent: l }))));
 
@@ -325,54 +350,53 @@ function render() {
   };
   $("years").replaceChildren(el("span", { className: "lbl", textContent: "Année" }), yChip("Toutes", null), ...years.map(y => yChip(y, y)));
 
-  const counts = Object.fromEntries(STATUS_ORDER.map(s => [s, inYear.filter(a => a.status === s).length]));
-  $("stats").replaceChildren(el("span", { className: "lbl", textContent: "Statut" }), ...STATUS_ORDER.filter(s => counts[s]).map(s => {
-    const b = el("button", { className: "chip", ariaPressed: filter === s }, s, el("b", { textContent: counts[s] }));
-    b.style.setProperty("--c", color(s));
-    b.onclick = () => { filter = filter === s ? null : s; render(); };
-    return b;
-  }));
-
   const q = query.toLowerCase();
   const rows = inYear
-    .filter(a => (!filter || a.status === filter) &&
-      (!q || [a.company, a.title, a.platform, a.location, a.note].join(" ").toLowerCase().includes(q)))
-    .sort((a, b) => (b.applied_on || "").localeCompare(a.applied_on || ""));
+    .filter(a => !q || [a.company, a.title, a.platform, a.location, a.note].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => (b.last_event_on || b.applied_on || "").localeCompare(a.last_event_on || a.applied_on || ""));
+  const by = s => rows.filter(a => a.status === s);
 
   const table = $("table");
   if (!rows.length) return table.replaceChildren(el("div", { className: "empty", textContent: "Aucune candidature pour ces filtres." }));
 
-  // grouped by year, most recent first
-  const groups = {};
-  rows.forEach(a => (groups[year(a)] ||= []).push(a));
-  table.replaceChildren(...Object.keys(groups).sort().reverse().flatMap(y => [
-    el("h3", { className: "year-h", textContent: `${y} · ${groups[y].length}` }),
-    el("div", { className: "list" }, groups[y].map(row)),
-  ]));
+  const parts = [];
+  // shown only when they have content: good news first, then the to-do
+  [["Réponse positive", "🎉 Réponses positives"], ["Incomplète", "✍️ À finaliser sur le site de l'entreprise"]].forEach(([s, label]) => {
+    const list = by(s);
+    if (!list.length) return;
+    const box = el("section", { className: "highlight" }, el("h3", { textContent: `${label} · ${list.length}` }), el("div", { className: "cards" }, list.map(card)));
+    box.style.setProperty("--c", color(s));
+    parts.push(box);
+  });
+  parts.push(el("div", { className: "boards" }, BOARDS.map(([s, rule]) => {
+    const list = by(s);
+    const b = el("section", { className: "board" },
+      el("div", { className: "board-h" },
+        el("div", { className: "t" }, el("span", { textContent: s }), el("span", { className: "n", textContent: list.length })),
+        el("div", { className: "r", textContent: rule })),
+      el("div", { className: "cards" }, list.length ? list.map(card) : el("div", { className: "empty-b", textContent: "Rien ici" })));
+    b.style.setProperty("--c", color(s));
+    return b;
+  })));
+  table.replaceChildren(...parts);
 }
 
-function row(a) {
-  const badge = el("span", { className: "badge", textContent: a.status });
-  const item = el("details", { className: "item" });
-  item.style.setProperty("--c", color(a.status));
-  badge.style.setProperty("--c", color(a.status));
+function card(a) {
+  const item = el("details", { className: "card" });
   const safeLink = /^https?:\/\//.test(a.link || "") ? a.link : null;
   const hist = (a.history || []).slice().reverse();
   const edit = el("button", { className: "btn light", textContent: "Modifier", type: "button" });
   edit.onclick = e => { e.preventDefault(); openEdit(a); };
+  const meta = [a.platform, a.applied_on ? fmt(a.applied_on) : null, a.location].filter(Boolean).join(" · ");
   item.append(
     el("summary", {},
-      el("div", {}, el("div", { className: "co" }, a.company, a.manual ? el("span", { className: "tag", textContent: "manuel" }) : null),
-        el("div", { className: "muted", textContent: a.location || "" })),
-      el("div", { textContent: a.title }),
-      el("div", { className: "hide-m muted", textContent: a.platform || "—" }),
-      el("div", { className: "hide-m muted", textContent: fmt(a.applied_on) }),
-      badge),
+      el("div", { className: "co" }, a.company, a.manual ? el("span", { className: "tag", textContent: "manuel" }) : null),
+      el("div", { className: "ti", textContent: a.title }),
+      el("div", { className: "meta", textContent: meta })),
     el("div", { className: "detail" },
-      el("div", {},
-        a.note ? el("p", { className: "muted", textContent: `📝 ${a.note}` }) : null,
-        safeLink ? el("p", {}, el("a", { href: safeLink, target: "_blank", rel: "noopener", textContent: "Voir l'offre ↗" })) : null,
-        hist.length ? el("ul", {}, hist.map(h => el("li", { textContent: `${fmt(h.date)} — ${h.event}` }))) : null),
+      a.note ? el("p", { className: "muted", textContent: `📝 ${a.note}` }) : null,
+      safeLink ? el("p", {}, el("a", { href: safeLink, target: "_blank", rel: "noopener", textContent: "Voir l'offre ↗" })) : null,
+      hist.length ? el("ul", {}, hist.map(h => el("li", { textContent: `${fmt(h.date)} — ${h.event}` }))) : null,
       edit));
   return item;
 }

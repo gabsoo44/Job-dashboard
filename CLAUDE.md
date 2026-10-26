@@ -15,8 +15,13 @@ site statique `web/` sur GitHub Pages. Plus aucun Excel : le libellé Gmail est 
 - `.github/workflows/sync.yml` — cron 02:00 UTC, push sur `web/**` (redéploiement seul), lancement manuel (backfill / set).
 
 ## Règles métier
-- Statuts : Offre, Entretien, En cours, À relancer, Relancée, Envoyée, Sans réponse, Refus, Incomplète.
-- Escalade auto uniquement pour `Envoyée`/`À relancer` : ≥7 j → « À relancer », ≥21 j → « Sans réponse ». `En cours` n'escalade jamais.
+- Statuts (choix de l'utilisateur, ne pas en rajouter) : Envoyée, En cours, Sans réponse, Refus, plus « Réponse positive »
+  (entretien / test / offre) et « Incomplète » (tâche à finaliser), affichés en bandeaux seulement s'ils sont non vides.
+- Règle de temps (Python `escalate` ET JS `escalate` dans web/index.html, à garder identiques) : depuis la dernière activité,
+  < 3 j → Envoyée, < 60 j → En cours, sinon Sans réponse. Refus / Réponse positive / Incomplète ne bougent pas.
+- Anciens statuts (Entretien, Offre, À relancer, Relancée) convertis via `LEGACY_STATUS`.
+- Dashboard : un conteneur par statut (Envoyée, En cours, Sans réponse, Refus), filtre par année, recherche.
+- README = présentation courte du projet (pas de technique) ; l'installation est dans docs/INSTALLATION.md.
 - Les mails sont traités par ordre chronologique. Le libellé signifie « lié à une candidature » : une réponse (refus, entretien…) sur une candidature inconnue la crée.
 - Même entreprise + même titre normalisé = même candidature (re-postulation → on avance `applied_on`, pas de doublon).
 - Un refus poli peut ressembler à un accusé : lire le corps du mail. HelloWork affiche parfois un nom générique (« Industrie ») : le vrai nom est dans le corps.

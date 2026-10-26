@@ -14,15 +14,12 @@ ROOT = Path(__file__).resolve().parent.parent
 STORE_FILE = ROOT / "web" / "data" / "store.enc.json"
 PBKDF2_ITERATIONS = 250_000
 
-STATUSES = [
-    "Offre", "Entretien", "En cours", "À relancer", "Relancée",
-    "Envoyée", "Sans réponse", "Refus", "Incomplète",
-]
+STATUSES = ["Réponse positive", "Envoyée", "En cours", "Sans réponse", "Refus", "Incomplète"]
 
 # Status set by a classified email event
 EVENT_STATUS = {
-    "interview": "Entretien",
-    "offer": "Offre",
+    "interview": "Réponse positive",
+    "offer": "Réponse positive",
     "rejection": "Refus",
     "viewed": "En cours",
     "recruiter_message": "En cours",
@@ -30,8 +27,13 @@ EVENT_STATUS = {
     "confirmation": "Envoyée",
 }
 
-# Statuses that automatic escalation (7 d / 21 d without news) may touch
-ESCALATABLE = {"Envoyée", "À relancer"}
+# Statuses from earlier versions (old manual overrides) -> current ones
+LEGACY_STATUS = {"Entretien": "Réponse positive", "Offre": "Réponse positive",
+                 "À relancer": "En cours", "Relancée": "En cours"}
+
+# Statuses that move with time: Envoyée (< 3 d) -> En cours (< 2 months) -> Sans réponse
+TIMED = {"Envoyée", "En cours"}
+SENT_DAYS, NO_ANSWER_DAYS = 3, 60
 
 EMPTY_STORE = {
     "generated_at": None,

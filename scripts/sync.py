@@ -25,7 +25,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from common import (ESCALATABLE, EVENT_STATUS, STATUSES, app_id, load_store, norm, norm_company, save_store)
+from common import (EVENT_STATUS, LEGACY_STATUS, NO_ANSWER_DAYS, SENT_DAYS, STATUSES, TIMED, app_id,
+                    load_store, norm, norm_company, save_store)
 
 LABEL = os.environ.get("GMAIL_LABEL", "Candidatures")
 MODEL = "haiku"  # Claude Code model alias: light on the subscription quota
@@ -242,15 +243,22 @@ def rebuild(events, overrides, today):
         ov = overrides.get(a["id"])  # manual edits always win
         if ov:
             a.update(ov)
+            a["status"] = LEGACY_STATUS.get(a["status"], a["status"])
     print(f"{applied} événements appliqués, {len(apps)} candidatures au total")
     return sorted(apps.values(), key=lambda a: a.get("applied_on") or "", reverse=True)
 
 
 def escalate(a, today):
-    if a["status"] not in ESCALATABLE or not a.get("applied_on"):
+    """Envoyée for the first days, En cours up to 2 months after the last activity, then Sans réponse."""
+    a["status"] = LEGACY_STATUS.get(a["status"], a["status"])
+    last = max(a.get("applied_on") or "", a.get("last_event_on") or "")
+    if a["status"] not in TIMED or not last:
         return
-    days = (today - date.fromisoformat(a["applied_on"])).days
-    a["status"] = "Sans réponse" if days >= 21 else "À relancer" if days >= 7 else a["status"]
+    days = (today - date.fromisoformat(last)).days
+    if days >= NO_ANSWER_DAYS:
+        a["status"] = "Sans réponse"
+    elif days >= SENT_DAYS:
+        a["status"] = "En cours"
 
 
 def main():
