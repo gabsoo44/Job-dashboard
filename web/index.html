@@ -65,10 +65,9 @@
   .search { max-width:420px; }
 
   /* boards: one container per status */
-  .highlight { border-radius:16px; padding:14px 16px 16px; margin-bottom:14px;
-               background:color-mix(in srgb, var(--c) 9%, white); border:1px solid color-mix(in srgb, var(--c) 30%, white); }
-  .highlight h3 { margin:0 0 10px; font-size:.95rem; font-weight:800; color:var(--c); }
-  .highlight .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px; padding:0; overflow:visible; }
+  .pinbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+  .pinbar .lbl { color:var(--muted); font-size:.8rem; font-weight:600; margin-right:4px; }
+  .pinbar .chip { border-color:color-mix(in srgb, var(--accent) 35%, white); }
   .boards { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; align-items:start; }
   .board { background:color-mix(in srgb, var(--c) 6%, white); border-radius:16px; border-top:4px solid var(--c);
            box-shadow:var(--shadow); display:flex; flex-direction:column; max-height:72vh; }
@@ -92,6 +91,16 @@
   .detail p { margin:0; }
   .detail a { color:var(--accent); font-size:.84rem; }
   .detail .btn { align-self:flex-start; padding:6px 12px; font-size:.82rem; }
+  .card .top { display:flex; justify-content:space-between; align-items:flex-start; gap:6px; }
+  .pin { border:0; background:none; cursor:pointer; font-size:.9rem; line-height:1; padding:2px; border-radius:6px;
+         opacity:.25; filter:grayscale(1); transition:opacity .15s; }
+  .card:hover .pin, .pin:focus-visible { opacity:.6; }
+  .pin[aria-pressed="true"] { opacity:1; filter:none; }
+  .card.pinned { border-color:color-mix(in srgb, var(--accent) 45%, white); }
+  .stag { display:inline-block; margin-top:6px; font-size:.7rem; font-weight:700; border-radius:6px; padding:1px 7px;
+          color:var(--c); background:color-mix(in srgb, var(--c) 13%, white); }
+  .card.flash { animation:flash 1.2s ease; }
+  @keyframes flash { 0%, 40% { box-shadow:0 0 0 3px var(--accent); } 100% { box-shadow:0 1px 2px rgba(20,23,43,.06); } }
   .board .empty-b { color:var(--muted); font-size:.82rem; text-align:center; padding:18px 8px; }
   .empty { padding:40px; text-align:center; color:var(--muted); background:var(--card); border-radius:14px; }
 
@@ -196,6 +205,9 @@ const BOARDS = [
   ["Sans réponse", "Plus de 2 mois sans nouvelles"],
   ["Refus", "Réponse négative reçue"],
 ];
+// these statuses have no container of their own: shown in "En cours" with a small tag
+const BOARD_OF = { "Réponse positive": "En cours", "Incomplète": "En cours" };
+const STATUS_TAG = { "Réponse positive": "Réponse positive", "Incomplète": "À finaliser" };
 const LEGACY = { "Entretien": "Réponse positive", "Offre": "Réponse positive", "À relancer": "En cours", "Relancée": "En cours" };
 const color = s => `var(--s-${(s || "Envoyée").replace(/ /g, "-")})`;
 const fmt = d => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
@@ -354,20 +366,18 @@ function render() {
   const rows = inYear
     .filter(a => !q || [a.company, a.title, a.platform, a.location, a.note].join(" ").toLowerCase().includes(q))
     .sort((a, b) => (b.last_event_on || b.applied_on || "").localeCompare(a.last_event_on || a.applied_on || ""));
-  const by = s => rows.filter(a => a.status === s);
+  const pins = pinned();
+  const by = s => rows.filter(a => (BOARD_OF[a.status] || a.status) === s)
+    .sort((a, b) => pins.has(b.id) - pins.has(a.id));
 
   const table = $("table");
   if (!rows.length) return table.replaceChildren(el("div", { className: "empty", textContent: "Aucune candidature pour ces filtres." }));
 
   const parts = [];
-  // shown only when they have content: good news first, then the to-do
-  [["Réponse positive", "🎉 Réponses positives"], ["Incomplète", "✍️ À finaliser sur le site de l'entreprise"]].forEach(([s, label]) => {
-    const list = by(s);
-    if (!list.length) return;
-    const box = el("section", { className: "highlight" }, el("h3", { textContent: `${label} · ${list.length}` }), el("div", { className: "cards" }, list.map(card)));
-    box.style.setProperty("--c", color(s));
-    parts.push(box);
-  });
+  const top = rows.filter(a => pins.has(a.id));
+  if (top.length) parts.push(el("div", { className: "pinbar" },
+    el("span", { className: "lbl", textContent: "📌 Épinglées" }),
+    top.map(a => { const b = el("button", { className: "chip", textContent: `${a.company} · ${a.title}` }); b.onclick = () => goTo(a.id); return b; })));
   parts.push(el("div", { className: "boards" }, BOARDS.map(([s, rule]) => {
     const list = by(s);
     const b = el("section", { className: "board" },
@@ -382,7 +392,14 @@ function render() {
 }
 
 function card(a) {
-  const item = el("details", { className: "card" });
+  const isPinned = pinned().has(a.id);
+  const item = el("details", { className: "card" + (isPinned ? " pinned" : "") });
+  item.dataset.id = a.id;
+  const pin = el("button", { className: "pin", type: "button", textContent: "📌", ariaPressed: isPinned,
+    title: isPinned ? "Désépingler" : "Épingler en haut" });
+  pin.onclick = e => { e.preventDefault(); e.stopPropagation(); togglePin(a); };
+  const tag = STATUS_TAG[a.status] ? el("span", { className: "stag", textContent: STATUS_TAG[a.status] }) : null;
+  if (tag) tag.style.setProperty("--c", color(a.status));
   const safeLink = /^https?:\/\//.test(a.link || "") ? a.link : null;
   const hist = (a.history || []).slice().reverse();
   const edit = el("button", { className: "btn light", textContent: "Modifier", type: "button" });
@@ -390,15 +407,44 @@ function card(a) {
   const meta = [a.platform, a.applied_on ? fmt(a.applied_on) : null, a.location].filter(Boolean).join(" · ");
   item.append(
     el("summary", {},
-      el("div", { className: "co" }, a.company, a.manual ? el("span", { className: "tag", textContent: "manuel" }) : null),
+      el("div", { className: "top" },
+        el("div", { className: "co" }, a.company, a.manual ? el("span", { className: "tag", textContent: "manuel" }) : null),
+        pin),
       el("div", { className: "ti", textContent: a.title }),
-      el("div", { className: "meta", textContent: meta })),
+      el("div", { className: "meta", textContent: meta }),
+      tag),
     el("div", { className: "detail" },
       a.note ? el("p", { className: "muted", textContent: `📝 ${a.note}` }) : null,
       safeLink ? el("p", {}, el("a", { href: safeLink, target: "_blank", rel: "noopener", textContent: "Voir l'offre ↗" })) : null,
       hist.length ? el("ul", {}, hist.map(h => el("li", { textContent: `${fmt(h.date)} — ${h.event}` }))) : null,
       edit));
   return item;
+}
+
+// ---- pins: saved with the manual edits when a GitHub token is set, else in this browser only
+function pinned() {
+  if (manual.pins) return new Set(manual.pins);
+  try { return new Set(JSON.parse(store.get("pins") || "[]")); } catch { return new Set(); }
+}
+async function togglePin(a) {
+  const set = pinned();
+  set.has(a.id) ? set.delete(a.id) : set.add(a.id);
+  if (store.get("ghToken")) {
+    const before = manual.pins;
+    manual.pins = [...set];
+    try { await saveManual(); } catch (ex) { manual.pins = before; return toast(ex.message); }
+  } else {
+    store.set("pins", JSON.stringify([...set]));
+    if (!togglePin.warned) { toast("Épingle gardée sur ce navigateur — ajoute un jeton GitHub pour la retrouver partout."); togglePin.warned = true; }
+  }
+  render();
+}
+function goTo(id) {
+  const c = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+  if (!c) return;
+  c.open = true;
+  c.scrollIntoView({ behavior: "smooth", block: "center" });
+  c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
 }
 
 // ---- add / edit
