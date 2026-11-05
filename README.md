@@ -11,13 +11,13 @@ Ce dashboard règle ça : il **regroupe toutes mes candidatures au même endroit
 ## Ce que fait le dashboard
 
 - **Se met à jour tout seul** chaque jour à partir de mes e-mails de candidature (confirmations, refus, entretiens…).
-- **Classe chaque candidature** dans un conteneur :
+- **Affiche un tableau coloré selon l'état**, les plus récentes en haut :
   - **Envoyée** : postulée il y a moins de 3 jours
   - **En cours** : en attente de réponse, depuis moins de 2 mois
   - **Sans réponse** : aucune nouvelle depuis plus de 2 mois
   - **Refus** : réponse négative reçue
-- **Met en avant** les réponses positives et les candidatures à finaliser.
-- **Filtre par année** et permet de rechercher une entreprise ou un poste.
+- **Signale** les réponses positives et les candidatures à finaliser, et permet d'épingler une candidature en haut du tableau.
+- **Filtre par année et par état**, trie par colonne et permet de rechercher une entreprise ou un poste.
 - **Permet d'ajouter ou de corriger** une candidature à la main.
 - **Reste privé** : les données sont chiffrées et le site est protégé par un mot de passe.
 

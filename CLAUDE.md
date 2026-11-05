@@ -16,11 +16,11 @@ site statique `web/` sur GitHub Pages. Plus aucun Excel : le libellé Gmail est 
 
 ## Règles métier
 - Statuts (choix de l'utilisateur, ne pas en rajouter) : Envoyée, En cours, Sans réponse, Refus, plus « Réponse positive »
-  (entretien / test / offre) et « Incomplète » (à finaliser) : pas de bandeau (refusé par l'utilisateur), rangés dans « En cours » avec une petite étiquette. Épingle 📌 = remonte en tête + ligne « Épinglées » (manual.pins, ou localStorage sans jeton).
+  (entretien / test / offre) et « Incomplète » (à finaliser). Épingle 📌 = ligne remontée en tête du tableau (manual.pins, ou localStorage sans jeton).
 - Règle de temps (Python `escalate` ET JS `escalate` dans web/index.html, à garder identiques) : depuis la dernière activité,
   < 3 j → Envoyée, < 60 j → En cours, sinon Sans réponse. Refus / Réponse positive / Incomplète ne bougent pas.
 - Anciens statuts (Entretien, Offre, À relancer, Relancée) convertis via `LEGACY_STATUS`.
-- Dashboard : un conteneur par statut (Envoyée, En cours, Sans réponse, Refus), filtre par année, recherche.
+- Dashboard : un tableau (Job, Entreprise, Site, Date, État) coloré selon l'état, plus récent en haut, tri par colonne, filtres par année et par état, recherche. L'utilisateur a préféré ce tableau aux conteneurs.
 - README = présentation courte du projet (pas de technique) ; l'installation est dans docs/INSTALLATION.md.
 - Les mails sont traités par ordre chronologique. Le libellé signifie « lié à une candidature » : une réponse (refus, entretien…) sur une candidature inconnue la crée.
 - Même entreprise + même titre normalisé = même candidature (re-postulation → on avance `applied_on`, pas de doublon).
