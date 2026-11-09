@@ -24,6 +24,11 @@ site statique `web/` sur GitHub Pages. Plus aucun Excel : le libellé Gmail est 
 - README = présentation courte du projet (pas de technique) ; l'installation est dans docs/INSTALLATION.md.
 - Les mails sont traités par ordre chronologique. Le libellé signifie « lié à une candidature » : une réponse (refus, entretien…) sur une candidature inconnue la crée.
 - Même entreprise + même titre normalisé = même candidature (re-postulation → on avance `applied_on`, pas de doublon).
+- Rattachement des mails aux candidatures : pour chaque entreprise ayant plusieurs mails, Claude (`LINK_SYSTEM`,
+  `link_companies`) décide des groupes « une candidature = un poste » à partir de date, type, objet, intitulé, réf. d'offre,
+  fil Gmail et extrait. Résultat mis en cache dans `store["links"]` (signature = liste des ids) : Claude n'est rappelé que
+  pour une entreprise qui reçoit un nouveau mail. Réponse invalide → règles de secours (même fil Gmail, intitulé proche,
+  mail sans intitulé à ≤ 3 jours d'un mail titré = même candidature). Chaque mail stocke `thread`, `snippet` (500 car.), `ref`.
 - Un refus poli peut ressembler à un accusé : lire le corps du mail. HelloWork affiche parfois un nom générique (« Industrie ») : le vrai nom est dans le corps.
 - Alertes emploi/newsletters = ignorées. Ne jamais envoyer de mail ni postuler à la place de l'utilisateur.
 - Les corrections manuelles (`overrides`) gagnent toujours sur l'automatique.
