@@ -359,7 +359,7 @@ function escalate(a) {
   return { ...a, status: days >= 60 ? "Sans réponse" : days >= 3 ? "En cours" : status };
 }
 function merge() {
-  const out = autoApps.map(a => {
+  const out = autoApps.filter(a => !manual.deleted[a.id]).map(a => {
     const e = manual.edits[a.id];
     if (!e) return escalate(a);
     const m = { ...a, ...e, manualEdit: true };
@@ -382,8 +382,8 @@ async function unlock(pw) {
   password = pw;
   store.sset("pw", pw);
   autoApps = data.applications; generatedAt = data.generated_at;
-  try { manual = await loadManual(); } catch { manual = { added: {}, edits: {} }; }
-  manual.added ||= {}; manual.edits ||= {};
+  try { manual = await loadManual(); } catch { manual = { added: {}, edits: {}, deleted: {} }; }
+  manual.added ||= {}; manual.edits ||= {}; manual.deleted ||= {};
   merge();
   $("lock").hidden = true; $("app").hidden = false; $("topActions").hidden = false;
   render();
@@ -509,7 +509,7 @@ function openEdit(a) {
   $("dlgTitle").textContent = a ? "Modifier la candidature" : "Ajouter une candidature";
   const v = a || { applied_on: today(), status: "Envoyée" };
   ["company", "title", "location", "platform", "applied_on", "status", "link", "note"].forEach(k => f.elements[k].value = v[k] || "");
-  $("btnDelete").hidden = !(a && a.manual);
+  $("btnDelete").hidden = !a;
   $("dlgEdit").showModal();
 }
 
@@ -534,7 +534,10 @@ $("formEdit").addEventListener("submit", async e => {
 $("btnDelete").onclick = async () => {
   if (!editing || !confirm(`Supprimer « ${editing.company} — ${editing.title} » ?`)) return;
   const before = JSON.stringify(manual);
-  delete manual.added[editing.id];
+  // automatic rows are hidden for good (the nightly sync would recreate them otherwise)
+  if (editing.manual) delete manual.added[editing.id];
+  else { manual.deleted[editing.id] = today(); delete manual.edits[editing.id]; }
+  if (manual.pins) manual.pins = manual.pins.filter(id => id !== editing.id);
   try { await saveManual(); $("dlgEdit").close(); merge(); render(); toast("Supprimée"); }
   catch (ex) { manual = JSON.parse(before); toast(ex.message); }
 };
@@ -555,7 +558,7 @@ $("formSettings").addEventListener("submit", async e => {
   if (!t) return;
   const r = await fetch(`https://api.github.com/repos/${REPO}`, { headers: { Authorization: `Bearer ${t}` } });
   toast(r.ok ? "Jeton enregistré ✓" : "Jeton refusé par GitHub — vérifie-le.");
-  if (r.ok && password) { try { manual = await loadManual(); manual.added ||= {}; manual.edits ||= {}; merge(); render(); } catch {} }
+  if (r.ok && password) { try { manual = await loadManual(); manual.added ||= {}; manual.edits ||= {}; manual.deleted ||= {}; merge(); render(); } catch {} }
 });
 $("btnLock").onclick = () => { store.sset("pw", null); location.reload(); };
 
