@@ -16,7 +16,7 @@ site statique `web/` sur GitHub Pages. Plus aucun Excel : le libellé Gmail est 
 
 ## Règles métier
 - Statuts (choix de l'utilisateur, ne pas en rajouter) : Envoyée, En cours, Sans réponse, Refus, plus « Réponse positive »
-  (entretien / test / offre) et « Incomplète » (à finaliser). Épingle 📌 = ligne remontée en tête du tableau (manual.pins, ou localStorage sans jeton).
+  (entretien / test / offre) et « Incomplète » (à finaliser). Supprimer une ligne auto = `manual.deleted[id]` (masquée définitivement, la synchro ne la recrée pas). Épingle 📌 = ligne remontée en tête du tableau (manual.pins, ou localStorage sans jeton).
 - Règle de temps (Python `escalate` ET JS `escalate` dans web/index.html, à garder identiques) : depuis la dernière activité,
   < 3 j → Envoyée, < 60 j → En cours, sinon Sans réponse. Refus / Réponse positive / Incomplète ne bougent pas.
 - Anciens statuts (Entretien, Offre, À relancer, Relancée) convertis via `LEGACY_STATUS`.
